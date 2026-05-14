@@ -81,6 +81,13 @@ io.on("connection", (socket) => {
       });
       return;
     }
+    if (pendingUsers[nickname] || approvedUsers[nickname]) {
+  socket.emit("joinResult", {
+    ok: false,
+    message: "이미 사용중인 닉네임입니다."
+  });
+  return;
+}
 
     if (code !== auction.code) {
       socket.emit("joinResult", {
