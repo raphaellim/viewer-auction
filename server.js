@@ -10,12 +10,12 @@ const io = new Server(server);
 app.use(express.static("public"));
 
 let auction = {
-  itemName: "빵떠기 귤청",
+  itemName: "빵떠기경매",
   startPrice: 10000,
   currentPrice: 10000,
   highestBidder: "",
   isRunning: false,
-  code: "TTEOGI",
+  code: "1234",
   bidUnit: 1000,
   duration: 300,
   endTime: null
