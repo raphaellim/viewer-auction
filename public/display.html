@@ -69,12 +69,12 @@ socket.on("state", (data) => {
   document.getElementById("itemName").innerText = auction.itemName;
   document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
   document.getElementById("remainingTime").innerText = remainingTime;
-  document.getElementById("currentPrice").innerText = auction.currentPrice.toLocaleString() + "떡";
+  document.getElementById("currentPrice").innerText = auction.currentPrice.toLocaleString() + "원";
   document.getElementById("highestBidder").innerText = auction.highestBidder || "없음";
 
   document.getElementById("logs").innerHTML =
     bidLogs.slice(0, 5).map(log => `
-      <div>${log.nickname} → ${Number(log.amount).toLocaleString()}떡</div>
+      <div>${log.nickname} → ${Number(log.amount).toLocaleString()}원</div>
     `).join("");
 });
 </script>
