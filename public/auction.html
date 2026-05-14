@@ -24,6 +24,7 @@ input, button {
   font-size: 18px;
   border-radius: 10px;
   border: none;
+  box-sizing: border-box;
 }
 button {
   background: #ff8a00;
@@ -47,7 +48,6 @@ button {
   color: #ccc;
 }
 .msg {
-  margin-top: 10px;
   color: #ffd36a;
 }
 </style>
@@ -55,7 +55,7 @@ button {
 <body>
 
 <div class="box">
-  <h1>시청자 경매</h1>
+  <h1>빵떠기 청귤 경매</h1>
 
   <div id="login">
     <input id="nickname" placeholder="닉네임">
@@ -88,6 +88,16 @@ button {
 <script>
 const socket = io();
 let myNickname = "";
+let lastPrice = 0;
+
+function escapeText(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 function join() {
   myNickname = document.getElementById("nickname").value.trim();
@@ -131,14 +141,16 @@ socket.on("state", (data) => {
   document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
 
   const nextBid = auction.currentPrice + auction.bidUnit;
-const bidInput = document.getElementById("bidAmount");
+  const bidInput = document.getElementById("bidAmount");
 
-if (!bidInput.value || Number(bidInput.value) <= auction.currentPrice) {
-  bidInput.value = nextBid;
-}
+  if (!bidInput.value || Number(bidInput.value) <= auction.currentPrice) {
+    bidInput.value = nextBid;
+  }
+
+  lastPrice = auction.currentPrice;
 
   document.getElementById("logs").innerHTML = bidLogs.map(log => {
-    return `<div>${log.time} - ${log.nickname} : ${Number(log.amount).toLocaleString()}원</div>`;
+    return `<div>${escapeText(log.time)} - ${escapeText(log.nickname)} : ${Number(log.amount).toLocaleString()}원</div>`;
   }).join("");
 });
 </script>
