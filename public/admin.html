@@ -24,6 +24,7 @@ input, button {
   margin: 5px 0;
   font-size: 16px;
   width: 100%;
+  box-sizing: border-box;
 }
 button {
   cursor: pointer;
@@ -76,12 +77,13 @@ button {
     <p>최고 입찰자: <b id="viewBidder"></b></p>
     <p>상태: <b id="viewStatus"></b></p>
   </div>
+
   <div class="box">
-  <h2>관리자 입찰</h2>
-  <input id="adminBidNickname" placeholder="입찰자 닉네임">
-  <input id="adminBidAmount" type="number" placeholder="입찰 금액">
-  <button onclick="adminBid()">관리자 입찰 넣기</button>
-</div>
+    <h2>관리자 입찰</h2>
+    <input id="adminBidNickname" placeholder="입찰자 닉네임">
+    <input id="adminBidAmount" type="number" placeholder="입찰 금액">
+    <button onclick="adminBid()">관리자 입찰 넣기</button>
+  </div>
 
   <div class="box">
     <h2>승인 대기자</h2>
@@ -108,12 +110,16 @@ button {
 <script>
 const socket = io();
 let firstLoad = true;
-function adminBid() {
-  socket.emit("adminBid", {
-    nickname: document.getElementById("adminBidNickname").value,
-    amount: document.getElementById("adminBidAmount").value
-  });
+
+function escapeText(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
+
 function updateAuction() {
   socket.emit("adminUpdate", {
     itemName: document.getElementById("itemName").value,
@@ -130,6 +136,13 @@ function startAuction() {
 
 function endAuction() {
   socket.emit("endAuction");
+}
+
+function adminBid() {
+  socket.emit("adminBid", {
+    nickname: document.getElementById("adminBidNickname").value,
+    amount: document.getElementById("adminBidAmount").value
+  });
 }
 
 function approveUser(nickname) {
@@ -153,8 +166,6 @@ socket.on("state", (data) => {
   document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
 
-  // 처음 접속했을 때만 입력칸에 기존 설정값 넣기
-  // 이후에는 사용자가 입력 중인 값이 1초마다 덮어써지지 않음
   if (firstLoad) {
     document.getElementById("itemName").value = auction.itemName;
     document.getElementById("startPrice").value = auction.startPrice;
@@ -165,25 +176,31 @@ socket.on("state", (data) => {
   }
 
   document.getElementById("pendingUsers").innerHTML =
-    Object.keys(pendingUsers).map(name => `
-      <div class="user">
-        <span>${name}</span>
-        <button onclick="approveUser('${name}')">승인</button>
-        <button onclick="blockUser('${name}')">차단</button>
-      </div>
-    `).join("");
+    Object.keys(pendingUsers).map(name => {
+      const safeName = escapeText(name);
+      return `
+        <div class="user">
+          <span>${safeName}</span>
+          <button onclick="approveUser('${safeName}')">승인</button>
+          <button onclick="blockUser('${safeName}')">차단</button>
+        </div>
+      `;
+    }).join("");
 
   document.getElementById("approvedUsers").innerHTML =
-    Object.keys(approvedUsers).map(name => `
-      <div class="user">
-        <span>${name}</span>
-        <button onclick="blockUser('${name}')">강퇴/차단</button>
-      </div>
-    `).join("");
+    Object.keys(approvedUsers).map(name => {
+      const safeName = escapeText(name);
+      return `
+        <div class="user">
+          <span>${safeName}</span>
+          <button onclick="blockUser('${safeName}')">강퇴/차단</button>
+        </div>
+      `;
+    }).join("");
 
   document.getElementById("logs").innerHTML =
     bidLogs.map(log => `
-      <div>${log.time} - ${log.nickname} : ${Number(log.amount).toLocaleString()}원</div>
+      <div>${escapeText(log.time)} - ${escapeText(log.nickname)} : ${Number(log.amount).toLocaleString()}원</div>
     `).join("");
 });
 </script>
