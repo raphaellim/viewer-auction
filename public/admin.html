@@ -141,12 +141,14 @@ socket.on("state", (data) => {
   document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
 
-  document.getElementById("itemName").value = auction.itemName;
-  document.getElementById("startPrice").value = auction.startPrice;
-  document.getElementById("bidUnit").value = auction.bidUnit;
-  document.getElementById("duration").value = auction.duration;
-  document.getElementById("code").value = auction.code;
-
+   if (firstLoad) {
+    document.getElementById("itemName").value = auction.itemName;
+    document.getElementById("startPrice").value = auction.startPrice;
+    document.getElementById("bidUnit").value = auction.bidUnit;
+    document.getElementById("duration").value = auction.duration;
+    document.getElementById("code").value = auction.code;
+    firstLoad = false;
+     
   document.getElementById("pendingUsers").innerHTML =
     Object.keys(pendingUsers).map(name => `
       <div class="user">
