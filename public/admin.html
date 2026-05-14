@@ -101,6 +101,7 @@ button {
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
+let firstLoad = true;
 
 function updateAuction() {
   socket.emit("adminUpdate", {
@@ -141,14 +142,17 @@ socket.on("state", (data) => {
   document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
 
-   if (firstLoad) {
+  // 처음 접속했을 때만 입력칸에 기존 설정값 넣기
+  // 이후에는 사용자가 입력 중인 값이 1초마다 덮어써지지 않음
+  if (firstLoad) {
     document.getElementById("itemName").value = auction.itemName;
     document.getElementById("startPrice").value = auction.startPrice;
     document.getElementById("bidUnit").value = auction.bidUnit;
     document.getElementById("duration").value = auction.duration;
     document.getElementById("code").value = auction.code;
     firstLoad = false;
-     
+  }
+
   document.getElementById("pendingUsers").innerHTML =
     Object.keys(pendingUsers).map(name => `
       <div class="user">
