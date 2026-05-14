@@ -41,6 +41,10 @@ button {
   display: flex;
   gap: 5px;
   margin: 5px 0;
+  align-items: center;
+}
+.user span {
+  flex: 1;
 }
 .user button {
   width: auto;
@@ -57,6 +61,7 @@ button {
     <input id="itemName" placeholder="상품명">
     <input id="startPrice" type="number" placeholder="시작가">
     <input id="bidUnit" type="number" placeholder="입찰 단위">
+    <input id="duration" type="number" placeholder="경매 시간 초">
     <input id="code" placeholder="참여코드">
     <button onclick="updateAuction()">설정 저장 / 초기화</button>
     <button class="start" onclick="startAuction()">경매 시작</button>
@@ -66,6 +71,7 @@ button {
   <div class="box">
     <h2>현재 상태</h2>
     <p>상품: <b id="viewItem"></b></p>
+    <p>남은시간: <b id="viewTime"></b></p>
     <p>현재가: <b id="viewPrice"></b></p>
     <p>최고 입찰자: <b id="viewBidder"></b></p>
     <p>상태: <b id="viewStatus"></b></p>
@@ -101,6 +107,7 @@ function updateAuction() {
     itemName: document.getElementById("itemName").value,
     startPrice: document.getElementById("startPrice").value,
     bidUnit: document.getElementById("bidUnit").value,
+    duration: document.getElementById("duration").value,
     code: document.getElementById("code").value
   });
 }
@@ -126,9 +133,10 @@ function resetUsers() {
 }
 
 socket.on("state", (data) => {
-  const { auction, pendingUsers, approvedUsers, bidLogs } = data;
+  const { auction, pendingUsers, approvedUsers, bidLogs, remainingTime } = data;
 
   document.getElementById("viewItem").innerText = auction.itemName;
+  document.getElementById("viewTime").innerText = remainingTime + "초";
   document.getElementById("viewPrice").innerText = auction.currentPrice.toLocaleString() + "원";
   document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
@@ -136,6 +144,7 @@ socket.on("state", (data) => {
   document.getElementById("itemName").value = auction.itemName;
   document.getElementById("startPrice").value = auction.startPrice;
   document.getElementById("bidUnit").value = auction.bidUnit;
+  document.getElementById("duration").value = auction.duration;
   document.getElementById("code").value = auction.code;
 
   document.getElementById("pendingUsers").innerHTML =
