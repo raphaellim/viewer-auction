@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>경매 관리자</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
+  padding: 30px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.box {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+}
+input, button {
+  padding: 12px;
+  margin: 5px 0;
+  font-size: 16px;
+  width: 100%;
+}
+button {
+  cursor: pointer;
+  font-weight: bold;
+}
+.start {
+  background: #28a745;
+  color: white;
+}
+.end {
+  background: #dc3545;
+  color: white;
+}
+.user {
+  display: flex;
+  gap: 5px;
+  margin: 5px 0;
+}
+.user button {
+  width: auto;
+}
+</style>
+</head>
+<body>
+
+<h1>경매 관리자</h1>
+
+<div class="grid">
+  <div class="box">
+    <h2>경매 설정</h2>
+    <input id="itemName" placeholder="상품명">
+    <input id="startPrice" type="number" placeholder="시작가">
+    <input id="bidUnit" type="number" placeholder="입찰 단위">
+    <input id="code" placeholder="참여코드">
+    <button onclick="updateAuction()">설정 저장 / 초기화</button>
+    <button class="start" onclick="startAuction()">경매 시작</button>
+    <button class="end" onclick="endAuction()">경매 종료</button>
+  </div>
+
+  <div class="box">
+    <h2>현재 상태</h2>
+    <p>상품: <b id="viewItem"></b></p>
+    <p>현재가: <b id="viewPrice"></b></p>
+    <p>최고 입찰자: <b id="viewBidder"></b></p>
+    <p>상태: <b id="viewStatus"></b></p>
+  </div>
+
+  <div class="box">
+    <h2>승인 대기자</h2>
+    <div id="pendingUsers"></div>
+  </div>
+
+  <div class="box">
+    <h2>승인된 참여자</h2>
+    <div id="approvedUsers"></div>
+  </div>
+
+  <div class="box">
+    <h2>입찰 로그</h2>
+    <div id="logs"></div>
+  </div>
+
+  <div class="box">
+    <h2>관리</h2>
+    <button onclick="resetUsers()">참여자 전체 초기화</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+function updateAuction() {
+  socket.emit("adminUpdate", {
+    itemName: document.getElementById("itemName").value,
+    startPrice: document.getElementById("startPrice").value,
+    bidUnit: document.getElementById("bidUnit").value,
+    code: document.getElementById("code").value
+  });
+}
+
+function startAuction() {
+  socket.emit("startAuction");
+}
+
+function endAuction() {
+  socket.emit("endAuction");
+}
+
+function approveUser(nickname) {
+  socket.emit("approveUser", nickname);
+}
+
+function blockUser(nickname) {
+  socket.emit("blockUser", nickname);
+}
+
+function resetUsers() {
+  socket.emit("resetUsers");
+}
+
+socket.on("state", (data) => {
+  const { auction, pendingUsers, approvedUsers, bidLogs } = data;
+
+  document.getElementById("viewItem").innerText = auction.itemName;
+  document.getElementById("viewPrice").innerText = auction.currentPrice.toLocaleString() + "원";
+  document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
+  document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
+
+  document.getElementById("itemName").value = auction.itemName;
+  document.getElementById("startPrice").value = auction.startPrice;
+  document.getElementById("bidUnit").value = auction.bidUnit;
+  document.getElementById("code").value = auction.code;
+
+  document.getElementById("pendingUsers").innerHTML =
+    Object.keys(pendingUsers).map(name => `
+      <div class="user">
+        <span>${name}</span>
+        <button onclick="approveUser('${name}')">승인</button>
+        <button onclick="blockUser('${name}')">차단</button>
+      </div>
+    `).join("");
+
+  document.getElementById("approvedUsers").innerHTML =
+    Object.keys(approvedUsers).map(name => `
+      <div class="user">
+        <span>${name}</span>
+        <button onclick="blockUser('${name}')">강퇴/차단</button>
+      </div>
+    `).join("");
+
+  document.getElementById("logs").innerHTML =
+    bidLogs.map(log => `
+      <div>${log.time} - ${log.nickname} : ${Number(log.amount).toLocaleString()}원</div>
+    `).join("");
+});
+</script>
+
+</body>
+</html>

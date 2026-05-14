@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>방송 경매 화면</title>
+<style>
+body {
+  margin: 0;
+  background: transparent;
+  font-family: Arial, sans-serif;
+  color: white;
+}
+.wrap {
+  width: 800px;
+  padding: 30px;
+  background: rgba(0,0,0,0.75);
+  border-radius: 25px;
+}
+.title {
+  font-size: 42px;
+  font-weight: bold;
+}
+.price {
+  font-size: 70px;
+  color: #ffd36a;
+  font-weight: bold;
+}
+.bidder {
+  font-size: 34px;
+}
+.status {
+  font-size: 28px;
+  color: #ff8a00;
+}
+.log {
+  margin-top: 20px;
+  font-size: 24px;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="title" id="itemName"></div>
+  <div class="status" id="status"></div>
+  <div>현재 최고가</div>
+  <div class="price" id="currentPrice"></div>
+  <div class="bidder">최고 입찰자: <span id="highestBidder"></span></div>
+  <div class="log" id="logs"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+socket.on("state", (data) => {
+  const { auction, bidLogs } = data;
+
+  document.getElementById("itemName").innerText = auction.itemName;
+  document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
+  document.getElementById("currentPrice").innerText = auction.currentPrice.toLocaleString() + "원";
+  document.getElementById("highestBidder").innerText = auction.highestBidder || "없음";
+
+  document.getElementById("logs").innerHTML =
+    bidLogs.slice(0, 5).map(log => `
+      <div>${log.nickname} → ${Number(log.amount).toLocaleString()}원</div>
+    `).join("");
+});
+</script>
+
+</body>
+</html>

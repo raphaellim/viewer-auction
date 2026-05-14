@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시청자 경매 참여</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  padding: 30px;
+}
+.box {
+  max-width: 500px;
+  margin: auto;
+  background: #222;
+  padding: 25px;
+  border-radius: 20px;
+}
+input, button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: none;
+}
+button {
+  background: #ff8a00;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+.price {
+  font-size: 42px;
+  color: #ffd36a;
+  font-weight: bold;
+}
+.log {
+  margin-top: 15px;
+  font-size: 15px;
+  color: #ccc;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h1>빵떠기 청귤 경매</h1>
+
+  <div id="login">
+    <input id="nickname" placeholder="닉네임">
+    <input id="code" placeholder="참여코드">
+    <button onclick="join()">참여 신청</button>
+    <p id="joinMsg"></p>
+  </div>
+
+  <div id="auction" style="display:none;">
+    <h2 id="itemName"></h2>
+    <p>현재 최고가</p>
+    <div class="price" id="currentPrice">0원</div>
+    <p>최고 입찰자: <b id="highestBidder">없음</b></p>
+    <p id="status"></p>
+
+    <input id="bidAmount" type="number" placeholder="입찰 금액">
+    <button onclick="bid()">입찰하기</button>
+
+    <div class="log" id="logs"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let myNickname = "";
+let approved = false;
+
+function join() {
+  myNickname = document.getElementById("nickname").value.trim();
+  const code = document.getElementById("code").value.trim();
+
+  socket.emit("join", {
+    nickname: myNickname,
+    code
+  });
+}
+
+function bid() {
+  const amount = document.getElementById("bidAmount").value;
+
+  socket.emit("bid", {
+    nickname: myNickname,
+    amount
+  });
+}
+
+socket.on("joinResult", (res) => {
+  document.getElementById("joinMsg").innerText = res.message;
+});
+
+socket.on("state", (data) => {
+  const { auction, approvedUsers, bidLogs } = data;
+
+  if (myNickname && approvedUsers[myNickname]) {
+    approved = true;
+    document.getElementById("login").style.display = "none";
+    document.getElementById("auction").style.display = "block";
+  }
+
+  document.getElementById("itemName").innerText = auction.itemName;
+  document.getElementById("currentPrice").innerText = auction.currentPrice.toLocaleString() + "원";
+  document.getElementById("highestBidder").innerText = auction.highestBidder || "없음";
+  document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
+
+  document.getElementById("logs").innerHTML = bidLogs.map(log => {
+    return `<div>${log.time} - ${log.nickname} : ${Number(log.amount).toLocaleString()}원</div>`;
+  }).join("");
+});
+</script>
+
+</body>
+</html>
