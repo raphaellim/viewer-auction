@@ -149,7 +149,7 @@ socket.on("state", (data) => {
 
   document.getElementById("viewItem").innerText = auction.itemName;
   document.getElementById("viewTime").innerText = remainingTime + "초";
-  document.getElementById("viewPrice").innerText = auction.currentPrice.toLocaleString() + "원";
+  document.getElementById("viewPrice").innerText = auction.currentPrice.toLocaleString() + "떡";
   document.getElementById("viewBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("viewStatus").innerText = auction.isRunning ? "진행중" : "대기/종료";
 
