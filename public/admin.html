@@ -76,6 +76,9 @@ button {
     <p>최고 입찰자: <b id="viewBidder"></b></p>
     <p>상태: <b id="viewStatus"></b></p>
   </div>
+  <input id="adminBidNickname" placeholder="입찰자 닉네임">
+<input id="adminBidAmount" type="number" placeholder="입찰 금액">
+<button onclick="adminBid()">관리자 입찰 넣기</button>
 
   <div class="box">
     <h2>승인 대기자</h2>
@@ -102,7 +105,12 @@ button {
 <script>
 const socket = io();
 let firstLoad = true;
-
+function adminBid() {
+  socket.emit("adminBid", {
+    nickname: document.getElementById("adminBidNickname").value,
+    amount: document.getElementById("adminBidAmount").value
+  });
+}
 function updateAuction() {
   socket.emit("adminUpdate", {
     itemName: document.getElementById("itemName").value,
