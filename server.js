@@ -15,7 +15,9 @@ let auction = {
   highestBidder: "",
   isRunning: false,
   code: "TTEOGI",
-  bidUnit: 1000
+  bidUnit: 1000,
+  duration: 60,
+  endTime: null
 };
 
 let pendingUsers = {};
@@ -23,9 +25,26 @@ let approvedUsers = {};
 let blockedUsers = {};
 let bidLogs = [];
 
+function getRemainingTime() {
+  if (!auction.isRunning || !auction.endTime) return 0;
+
+  const remaining = Math.max(
+    0,
+    Math.ceil((auction.endTime - Date.now()) / 1000)
+  );
+
+  if (remaining <= 0) {
+    auction.isRunning = false;
+    auction.endTime = null;
+  }
+
+  return remaining;
+}
+
 function sendState() {
   io.emit("state", {
     auction,
+    remainingTime: getRemainingTime(),
     pendingUsers,
     approvedUsers,
     blockedUsers,
@@ -73,11 +92,33 @@ io.on("connection", (socket) => {
   socket.on("bid", ({ nickname, amount }) => {
     amount = Number(amount);
 
-    if (!auction.isRunning) return;
-    if (!approvedUsers[nickname]) return;
-    if (blockedUsers[nickname]) return;
-    if (!amount || amount <= auction.currentPrice) return;
-    if (amount % auction.bidUnit !== 0) return;
+    if (!auction.isRunning) {
+      socket.emit("bidResult", "경매가 아직 시작되지 않았거나 종료되었습니다.");
+      return;
+    }
+
+    if (!approvedUsers[nickname]) {
+      socket.emit("bidResult", "아직 관리자의 승인을 받지 않았습니다.");
+      return;
+    }
+
+    if (blockedUsers[nickname]) {
+      socket.emit("bidResult", "차단된 참여자입니다.");
+      return;
+    }
+
+    if (!amount || amount <= auction.currentPrice) {
+      socket.emit("bidResult", "현재가보다 높은 금액을 입력하세요.");
+      return;
+    }
+
+    if (amount % auction.bidUnit !== 0) {
+      socket.emit(
+        "bidResult",
+        `${auction.bidUnit.toLocaleString()}원 단위로 입찰해야 합니다.`
+      );
+      return;
+    }
 
     auction.currentPrice = amount;
     auction.highestBidder = nickname;
@@ -90,6 +131,7 @@ io.on("connection", (socket) => {
 
     bidLogs = bidLogs.slice(0, 20);
 
+    socket.emit("bidResult", "입찰 완료!");
     sendState();
   });
 
@@ -100,17 +142,23 @@ io.on("connection", (socket) => {
     auction.highestBidder = "";
     auction.code = data.code || auction.code;
     auction.bidUnit = Number(data.bidUnit) || auction.bidUnit;
+    auction.duration = Number(data.duration) || auction.duration;
+    auction.endTime = null;
+    auction.isRunning = false;
     bidLogs = [];
+
     sendState();
   });
 
   socket.on("startAuction", () => {
     auction.isRunning = true;
+    auction.endTime = Date.now() + auction.duration * 1000;
     sendState();
   });
 
   socket.on("endAuction", () => {
     auction.isRunning = false;
+    auction.endTime = null;
     sendState();
   });
 
@@ -136,6 +184,10 @@ io.on("connection", (socket) => {
     sendState();
   });
 });
+
+setInterval(() => {
+  sendState();
+}, 1000);
 
 const PORT = process.env.PORT || 3000;
 
