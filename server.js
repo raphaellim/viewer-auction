@@ -1,3 +1,4 @@
+const fs = require("fs");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -22,6 +23,14 @@ let auction = {
 
 let pendingUsers = {};
 let approvedUsers = {};
+
+try {
+  approvedUsers = JSON.parse(
+    fs.readFileSync("approvedUsers.json", "utf8")
+  );
+} catch (e) {
+  approvedUsers = {};
+}
 let blockedUsers = {};
 let bidLogs = [];
 
@@ -39,6 +48,13 @@ function getRemainingTime() {
   }
 
   return remaining;
+}
+
+function saveApprovedUsers() {
+  fs.writeFileSync(
+    "approvedUsers.json",
+    JSON.stringify(approvedUsers, null, 2)
+  );
 }
 
 function sendState() {
@@ -171,6 +187,7 @@ if (remaining > 0 && remaining <= 10) {
   socket.on("approveUser", (nickname) => {
     if (pendingUsers[nickname]) {
       approvedUsers[nickname] = pendingUsers[nickname];
+      saveApprovedUsers();
       delete pendingUsers[nickname];
     }
     sendState();
@@ -180,12 +197,14 @@ if (remaining > 0 && remaining <= 10) {
     blockedUsers[nickname] = true;
     delete pendingUsers[nickname];
     delete approvedUsers[nickname];
+    saveApprovedUsers();
     sendState();
   });
 
   socket.on("resetUsers", () => {
     pendingUsers = {};
     approvedUsers = {};
+    saveApprovedUsers();
     blockedUsers = {};
     sendState();
   });
