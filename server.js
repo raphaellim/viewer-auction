@@ -123,6 +123,12 @@ io.on("connection", (socket) => {
     auction.currentPrice = amount;
     auction.highestBidder = nickname;
 
+    const remaining = getRemainingTime();
+
+if (remaining > 0 && remaining <= 10) {
+  auction.endTime += 10 * 1000;
+}
+
     bidLogs.unshift({
       nickname,
       amount,
