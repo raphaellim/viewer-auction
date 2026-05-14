@@ -130,6 +130,13 @@ socket.on("state", (data) => {
   document.getElementById("highestBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
 
+  const nextBid = auction.currentPrice + auction.bidUnit;
+const bidInput = document.getElementById("bidAmount");
+
+if (!bidInput.value || Number(bidInput.value) <= auction.currentPrice) {
+  bidInput.value = nextBid;
+}
+
   document.getElementById("logs").innerHTML = bidLogs.map(log => {
     return `<div>${log.time} - ${log.nickname} : ${Number(log.amount).toLocaleString()}원</div>`;
   }).join("");
