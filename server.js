@@ -88,6 +88,8 @@ io.on("connection", (socket) => {
   });
   return;
 }
+    if (nickname.length > 12)
+      /^[a-zA-Z0-9가-힣]+$/
 
     if (code !== auction.code) {
       socket.emit("joinResult", {
