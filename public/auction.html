@@ -36,34 +36,49 @@ button {
   color: #ffd36a;
   font-weight: bold;
 }
+.time {
+  font-size: 38px;
+  color: #7ee787;
+  font-weight: bold;
+}
 .log {
   margin-top: 15px;
   font-size: 15px;
   color: #ccc;
+}
+.msg {
+  margin-top: 10px;
+  color: #ffd36a;
 }
 </style>
 </head>
 <body>
 
 <div class="box">
-  <h1>빵떠기 청귤 경매</h1>
+  <h1>시청자 경매</h1>
 
   <div id="login">
     <input id="nickname" placeholder="닉네임">
     <input id="code" placeholder="참여코드">
     <button onclick="join()">참여 신청</button>
-    <p id="joinMsg"></p>
+    <p id="joinMsg" class="msg"></p>
   </div>
 
   <div id="auction" style="display:none;">
     <h2 id="itemName"></h2>
+
+    <p>남은시간</p>
+    <div class="time" id="remainingTime">0초</div>
+
     <p>현재 최고가</p>
     <div class="price" id="currentPrice">0원</div>
+
     <p>최고 입찰자: <b id="highestBidder">없음</b></p>
     <p id="status"></p>
 
     <input id="bidAmount" type="number" placeholder="입찰 금액">
     <button onclick="bid()">입찰하기</button>
+    <p id="bidMsg" class="msg"></p>
 
     <div class="log" id="logs"></div>
   </div>
@@ -73,7 +88,6 @@ button {
 <script>
 const socket = io();
 let myNickname = "";
-let approved = false;
 
 function join() {
   myNickname = document.getElementById("nickname").value.trim();
@@ -98,16 +112,20 @@ socket.on("joinResult", (res) => {
   document.getElementById("joinMsg").innerText = res.message;
 });
 
+socket.on("bidResult", (msg) => {
+  document.getElementById("bidMsg").innerText = msg;
+});
+
 socket.on("state", (data) => {
-  const { auction, approvedUsers, bidLogs } = data;
+  const { auction, approvedUsers, bidLogs, remainingTime } = data;
 
   if (myNickname && approvedUsers[myNickname]) {
-    approved = true;
     document.getElementById("login").style.display = "none";
     document.getElementById("auction").style.display = "block";
   }
 
   document.getElementById("itemName").innerText = auction.itemName;
+  document.getElementById("remainingTime").innerText = remainingTime + "초";
   document.getElementById("currentPrice").innerText = auction.currentPrice.toLocaleString() + "원";
   document.getElementById("highestBidder").innerText = auction.highestBidder || "없음";
   document.getElementById("status").innerText = auction.isRunning ? "경매 진행중" : "경매 대기/종료";
