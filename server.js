@@ -70,6 +70,27 @@ function sendState() {
 
 io.on("connection", (socket) => {
   sendState();
+  socket.on("adminBid", ({ nickname, amount }) => {
+  amount = Number(amount);
+
+  if (!nickname) return;
+  if (!auction.isRunning) return;
+  if (!amount || amount <= auction.currentPrice) return;
+  if (amount % auction.bidUnit !== 0) return;
+
+  auction.currentPrice = amount;
+  auction.highestBidder = nickname;
+
+  bidLogs.unshift({
+    nickname: nickname + " / 관리자입력",
+    amount,
+    time: new Date().toLocaleTimeString("ko-KR")
+  });
+
+  bidLogs = bidLogs.slice(0, 20);
+
+  sendState();
+});
 
   socket.on("join", ({ nickname, code }) => {
     if (!nickname || !code) return;
