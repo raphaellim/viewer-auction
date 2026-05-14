@@ -23,16 +23,22 @@ let auction = {
 
 let pendingUsers = {};
 let approvedUsers = {};
+let blockedUsers = {};
+let bidLogs = [];
+let lastBidTimes = {};
 
 try {
-  approvedUsers = JSON.parse(
-    fs.readFileSync("approvedUsers.json", "utf8")
-  );
+  approvedUsers = JSON.parse(fs.readFileSync("approvedUsers.json", "utf8"));
 } catch (e) {
   approvedUsers = {};
 }
-let blockedUsers = {};
-let bidLogs = [];
+
+function saveApprovedUsers() {
+  fs.writeFileSync(
+    "approvedUsers.json",
+    JSON.stringify(approvedUsers, null, 2)
+  );
+}
 
 function getRemainingTime() {
   if (!auction.isRunning || !auction.endTime) return 0;
@@ -50,13 +56,6 @@ function getRemainingTime() {
   return remaining;
 }
 
-function saveApprovedUsers() {
-  fs.writeFileSync(
-    "approvedUsers.json",
-    JSON.stringify(approvedUsers, null, 2)
-  );
-}
-
 function sendState() {
   io.emit("state", {
     auction,
@@ -70,30 +69,18 @@ function sendState() {
 
 io.on("connection", (socket) => {
   sendState();
-  socket.on("adminBid", ({ nickname, amount }) => {
-  amount = Number(amount);
-
-  if (!nickname) return;
-  if (!auction.isRunning) return;
-  if (!amount || amount <= auction.currentPrice) return;
-  if (amount % auction.bidUnit !== 0) return;
-
-  auction.currentPrice = amount;
-  auction.highestBidder = nickname;
-
-  bidLogs.unshift({
-    nickname: nickname + " / 관리자입력",
-    amount,
-    time: new Date().toLocaleTimeString("ko-KR")
-  });
-
-  bidLogs = bidLogs.slice(0, 20);
-
-  sendState();
-});
 
   socket.on("join", ({ nickname, code }) => {
-    if (!nickname || !code) return;
+    nickname = String(nickname || "").trim();
+    code = String(code || "").trim();
+
+    if (!nickname || !code) {
+      socket.emit("joinResult", {
+        ok: false,
+        message: "닉네임과 참여코드를 입력하세요."
+      });
+      return;
+    }
 
     if (blockedUsers[nickname]) {
       socket.emit("joinResult", {
@@ -102,15 +89,42 @@ io.on("connection", (socket) => {
       });
       return;
     }
-    if (pendingUsers[nickname] || approvedUsers[nickname]) {
-  socket.emit("joinResult", {
-    ok: false,
-    message: "이미 사용중인 닉네임입니다."
-  });
-  return;
-}
-    if (nickname.length > 12)
-      /^[a-zA-Z0-9가-힣]+$/
+
+    if (pendingUsers[nickname]) {
+      socket.emit("joinResult", {
+        ok: false,
+        message: "이미 승인 대기 중인 닉네임입니다."
+      });
+      return;
+    }
+
+    if (nickname.length > 12) {
+      socket.emit("joinResult", {
+        ok: false,
+        message: "닉네임은 12자 이하만 가능합니다."
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9가-힣]+$/.test(nickname)) {
+      socket.emit("joinResult", {
+        ok: false,
+        message: "닉네임은 한글/영문/숫자만 가능합니다."
+      });
+      return;
+    }
+
+    if (approvedUsers[nickname]) {
+      socket.nickname = nickname;
+
+      socket.emit("joinResult", {
+        ok: true,
+        message: "이미 승인된 참여자입니다."
+      });
+
+      sendState();
+      return;
+    }
 
     if (code !== auction.code) {
       socket.emit("joinResult", {
@@ -136,6 +150,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("bid", ({ nickname, amount }) => {
+    nickname = String(nickname || "").trim();
     amount = Number(amount);
 
     if (!auction.isRunning) {
@@ -153,8 +168,25 @@ io.on("connection", (socket) => {
       return;
     }
 
+    const now = Date.now();
+
+    if (lastBidTimes[nickname] && now - lastBidTimes[nickname] < 2000) {
+      socket.emit("bidResult", "2초 후 다시 입찰하세요.");
+      return;
+    }
+
     if (!amount || amount <= auction.currentPrice) {
       socket.emit("bidResult", "현재가보다 높은 금액을 입력하세요.");
+      return;
+    }
+
+    const maxBid = auction.currentPrice + 100000;
+
+    if (amount > maxBid) {
+      socket.emit(
+        "bidResult",
+        `최대 ${maxBid.toLocaleString()}원까지만 입찰 가능합니다.`
+      );
       return;
     }
 
@@ -166,14 +198,16 @@ io.on("connection", (socket) => {
       return;
     }
 
+    lastBidTimes[nickname] = now;
+
     auction.currentPrice = amount;
     auction.highestBidder = nickname;
 
     const remaining = getRemainingTime();
 
-if (remaining > 0 && remaining <= 10) {
-  auction.endTime += 10 * 1000;
-}
+    if (remaining > 0 && remaining <= 10) {
+      auction.endTime += 20 * 1000;
+    }
 
     bidLogs.unshift({
       nickname,
@@ -184,6 +218,35 @@ if (remaining > 0 && remaining <= 10) {
     bidLogs = bidLogs.slice(0, 20);
 
     socket.emit("bidResult", "입찰 완료!");
+    sendState();
+  });
+
+  socket.on("adminBid", ({ nickname, amount }) => {
+    nickname = String(nickname || "").trim();
+    amount = Number(amount);
+
+    if (!nickname) return;
+    if (!auction.isRunning) return;
+    if (!amount || amount <= auction.currentPrice) return;
+    if (amount % auction.bidUnit !== 0) return;
+
+    auction.currentPrice = amount;
+    auction.highestBidder = nickname;
+
+    const remaining = getRemainingTime();
+
+    if (remaining > 0 && remaining <= 10) {
+      auction.endTime += 20 * 1000;
+    }
+
+    bidLogs.unshift({
+      nickname: nickname + " / 관리자입력",
+      amount,
+      time: new Date().toLocaleTimeString("ko-KR")
+    });
+
+    bidLogs = bidLogs.slice(0, 20);
+
     sendState();
   });
 
@@ -198,6 +261,7 @@ if (remaining > 0 && remaining <= 10) {
     auction.endTime = null;
     auction.isRunning = false;
     bidLogs = [];
+    lastBidTimes = {};
 
     sendState();
   });
@@ -217,9 +281,10 @@ if (remaining > 0 && remaining <= 10) {
   socket.on("approveUser", (nickname) => {
     if (pendingUsers[nickname]) {
       approvedUsers[nickname] = pendingUsers[nickname];
-      saveApprovedUsers();
       delete pendingUsers[nickname];
+      saveApprovedUsers();
     }
+
     sendState();
   });
 
@@ -234,8 +299,9 @@ if (remaining > 0 && remaining <= 10) {
   socket.on("resetUsers", () => {
     pendingUsers = {};
     approvedUsers = {};
-    saveApprovedUsers();
     blockedUsers = {};
+    lastBidTimes = {};
+    saveApprovedUsers();
     sendState();
   });
 });
